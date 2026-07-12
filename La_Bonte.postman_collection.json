@@ -1,0 +1,595 @@
+{
+  "info": {
+    "_postman_id": "ba350c39-9744-4436-804e-a58c4b1a825c",
+    "name": "CLB API — École La Bonté",
+    "description": "API de consultation CLB API.\n\nAuthentification :\n1. Exécuter **Auth > Login** (téléphone + PIN) — le token de session est enregistré automatiquement.\n2. Ou définir `apiToken` dans les variables pour le token technique (API_TOKEN).\n\nLes requêtes protégées utilisent `Authorization: Bearer {{authToken}}` (sessionToken si défini, sinon apiToken).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6760438"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (téléphone + PIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('sessionToken', json.token);",
+                  "    if (json.parent && json.parent.id) {",
+                  "        pm.collectionVariables.set('parentId', json.parent.id);",
+                  "    }",
+                  "    pm.test('Token de session enregistré', () => pm.expect(json.token).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"243977788537\",\n  \"pin\": \"1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Connexion parent. Enregistre automatiquement `sessionToken` et `parentId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Changer PIN",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"243977788537\",\n  \"current_pin\": \"1234\",\n  \"new_pin\": \"5678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-pin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-pin"
+              ]
+            },
+            "description": "Modifier le PIN (4 à 6 chiffres). `current_pin` = PIN actuel ou DEFAULT_PIN."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints publics (pas d'authentification requise)."
+    },
+    {
+      "name": "Abonnements",
+      "item": [
+        {
+          "name": "Liste des abonnements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/abonnements?actif=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "abonnements"
+              ],
+              "query": [
+                {
+                  "key": "actif",
+                  "value": "",
+                  "description": "1 ou true = abonnements actifs"
+                }
+              ]
+            },
+            "description": "Liste tous les abonnements. Paramètre optionnel `actif`."
+          },
+          "response": []
+        },
+        {
+          "name": "Détail abonnement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/abonnements/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "abonnements",
+                "1"
+              ]
+            },
+            "description": "Remplacer l'ID dans l'URL."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Absences agents",
+      "item": [
+        {
+          "name": "Liste des absences agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/absences?agentaffectation_id=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "absences"
+              ],
+              "query": [
+                {
+                  "key": "agentaffectation_id",
+                  "value": "",
+                  "description": "Filtre par affectation agent"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Détail absence agent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/absences/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "absences",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Absences élèves",
+      "item": [
+        {
+          "name": "Liste des absences élèves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/absences-eleves?eleve=&classe=&section=&anneescolaire=2025/2026&statut=&date_debut=&date_fin=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "absences-eleves"
+              ],
+              "query": [
+                {
+                  "key": "eleve",
+                  "value": "",
+                  "description": "Recherche partielle nom élève"
+                },
+                {
+                  "key": "classe",
+                  "value": "",
+                  "description": "Recherche partielle classe"
+                },
+                {
+                  "key": "section",
+                  "value": "",
+                  "description": "Recherche partielle section"
+                },
+                {
+                  "key": "anneescolaire",
+                  "value": "2025/2026"
+                },
+                {
+                  "key": "statut",
+                  "value": ""
+                },
+                {
+                  "key": "date_debut",
+                  "value": "",
+                  "description": "ex. 2025-09-01"
+                },
+                {
+                  "key": "date_fin",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Élèves",
+      "item": [
+        {
+          "name": "Recherche par téléphone tuteur",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/eleves?numero_telephone_tuteur={{telephone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eleves"
+              ],
+              "query": [
+                {
+                  "key": "numero_telephone_tuteur",
+                  "value": "{{telephone}}",
+                  "description": "Requis"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Élèves par parent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/eleves/by-parent/{{parentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eleves",
+                "by-parent",
+                "{{parentId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Absences d'un élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/eleves/{{eleveId}}/absences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eleves",
+                "{{eleveId}}",
+                "absences"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Détail élève",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/eleves/{{eleveId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "eleves",
+                "{{eleveId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Paiements",
+      "item": [
+        {
+          "name": "Liste des paiements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paiements?eleve_id={{eleveId}}&tarification_id=&mois={{mois}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paiements"
+              ],
+              "query": [
+                {
+                  "key": "eleve_id",
+                  "value": "{{eleveId}}"
+                },
+                {
+                  "key": "tarification_id",
+                  "value": ""
+                },
+                {
+                  "key": "mois",
+                  "value": "{{mois}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Paiements élève — année scolaire",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paiements/eleve/{{eleveId}}/annee-scolaire/{{anneescolaireId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paiements",
+                "eleve",
+                "{{eleveId}}",
+                "annee-scolaire",
+                "{{anneescolaireId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Paiements élève — année scolaire courante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paiements/eleve/{{eleveId}}/annee-scolaire-courante",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paiements",
+                "eleve",
+                "{{eleveId}}",
+                "annee-scolaire-courante"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Paiements élève — par mois",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paiements/eleve/{{eleveId}}/mois/{{mois}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paiements",
+                "eleve",
+                "{{eleveId}}",
+                "mois",
+                "{{mois}}"
+              ]
+            },
+            "description": "Valeur exacte du champ paiement.mois (ex. July, pas de mois)."
+          },
+          "response": []
+        },
+        {
+          "name": "Détail paiement",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/paiements/16570",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "paiements",
+                "16570"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tarifications",
+      "item": [
+        {
+          "name": "Liste des tarifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tarifications?nom=f.",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tarifications"
+              ],
+              "query": [
+                {
+                  "key": "nom",
+                  "value": "f.",
+                  "description": "Recherche partielle (ex. Inscription)"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Détail tarification",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tarifications/5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tarifications",
+                "5"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": [
+          "const session = pm.collectionVariables.get('sessionToken');",
+          "const api = pm.collectionVariables.get('apiToken');",
+          "pm.collectionVariables.set('authToken', session || api || '');"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "apiToken",
+      "value": "votre-api-token"
+    },
+    {
+      "key": "sessionToken",
+      "value": ""
+    },
+    {
+      "key": "authToken",
+      "value": ""
+    },
+    {
+      "key": "parentId",
+      "value": "1007"
+    },
+    {
+      "key": "eleveId",
+      "value": "1868"
+    },
+    {
+      "key": "anneescolaireId",
+      "value": "4"
+    },
+    {
+      "key": "telephone",
+      "value": "+243997031460"
+    },
+    {
+      "key": "pin",
+      "value": "1234"
+    },
+    {
+      "key": "mois",
+      "value": "July"
+    }
+  ]
+}

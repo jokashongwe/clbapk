@@ -1,0 +1,1 @@
+export { COLLEGE_LA_BONTE_CONFIGS } from './constants'

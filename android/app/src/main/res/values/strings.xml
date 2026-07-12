@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CLB App</string>
+    <string name="title_activity_main">CLB App</string>
+    <string name="package_name">com.collegelabonte.clbapp</string>
+    <string name="custom_url_scheme">com.collegelabonte.clbapp</string>
+</resources>
