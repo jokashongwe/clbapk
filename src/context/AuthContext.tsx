@@ -67,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       parentName: parentDisplayName(response.parent),
       parentIdentity,
       mustChangePin: response.parent.must_change_pin ?? false,
+      isPromoteur: response.isPromoteur,
+      roles: response.roles,
     }
 
     await saveSession(nextSession)

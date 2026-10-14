@@ -11,6 +11,8 @@ const KEYS = {
   parentName: 'clb_parent_name',
   parentIdentity: 'clb_parent_identity',
   mustChangePin: 'clb_must_change_pin',
+  isPromoteur: 'clb_is_promoteur',
+  roles: 'clb_roles',
 } as const
 
 async function get(key: string): Promise<string | null> {
@@ -27,7 +29,7 @@ async function remove(key: string): Promise<void> {
 }
 
 export async function loadSession(): Promise<SessionData | null> {
-  const [token, parentId, baseUrl, schoolCode, telephone, parentName, parentIdentityRaw, mustChangePin] =
+  const [token, parentId, baseUrl, schoolCode, telephone, parentName, parentIdentityRaw, mustChangePin, isPromoteurRaw, rolesRaw] =
     await Promise.all([
       get(KEYS.token),
       get(KEYS.parentId),
@@ -37,6 +39,8 @@ export async function loadSession(): Promise<SessionData | null> {
       get(KEYS.parentName),
       get(KEYS.parentIdentity),
       get(KEYS.mustChangePin),
+      get(KEYS.isPromoteur),
+      get(KEYS.roles),
     ])
 
   if (!token || !parentId || !baseUrl || !schoolCode || !telephone) {
@@ -52,6 +56,16 @@ export async function loadSession(): Promise<SessionData | null> {
     }
   }
 
+  let roles: string[] = []
+  if (rolesRaw) {
+    try {
+      const parsed = JSON.parse(rolesRaw)
+      if (Array.isArray(parsed)) roles = parsed.filter((r): r is string => typeof r === 'string')
+    } catch {
+      roles = []
+    }
+  }
+
   return {
     token,
     parentId: Number(parentId),
@@ -61,6 +75,8 @@ export async function loadSession(): Promise<SessionData | null> {
     parentName: parentName ?? undefined,
     parentIdentity,
     mustChangePin: mustChangePin === 'true',
+    isPromoteur: isPromoteurRaw === 'true',
+    roles,
   }
 }
 
@@ -75,6 +91,8 @@ export async function saveSession(session: SessionData): Promise<void> {
     set(KEYS.parentName, session.parentName ?? ''),
     set(KEYS.parentIdentity, session.parentIdentity ? JSON.stringify(session.parentIdentity) : ''),
     set(KEYS.mustChangePin, session.mustChangePin ? 'true' : 'false'),
+    set(KEYS.isPromoteur, session.isPromoteur ? 'true' : 'false'),
+    set(KEYS.roles, JSON.stringify(session.roles)),
   ])
 }
 

@@ -32,6 +32,18 @@ export function parentDisplayName(parent: ApiParent): string | undefined {
   return identity.nomTuteur ?? identity.nomMere ?? identity.nomPere
 }
 
+export function isPromoterAccount(parent: ApiParent, roles: string[] = []): boolean {
+  if (parent.isDirecteur === true || parent.is_directeur === true) return true
+  if (parent.isPromoteur === true || parent.is_promoteur === true) return true
+  return roles.some(r => r === 'ROLE_DIRECTEUR' || r === 'ROLE_PROMOTEUR')
+}
+
+function extractRoles(data: Record<string, unknown>): string[] {
+  const roles = data.roles
+  if (!Array.isArray(roles)) return []
+  return roles.filter((r): r is string => typeof r === 'string')
+}
+
 function extractToken(data: Record<string, unknown>): string | null {
   const candidates = [
     data.token,
@@ -72,6 +84,7 @@ export function parseLoginResponse(data: unknown): LoginResponse {
 
   const token = extractToken(record)
   const parent = extractParent(record)
+  const roles = extractRoles(record)
 
   if (!token) {
     throw new Error('Token de session manquant dans la réponse du serveur')
@@ -80,5 +93,10 @@ export function parseLoginResponse(data: unknown): LoginResponse {
     throw new Error('Informations parent manquantes dans la réponse du serveur')
   }
 
-  return { token, parent }
+  return {
+    token,
+    parent,
+    roles,
+    isPromoteur: isPromoterAccount(parent, roles),
+  }
 }

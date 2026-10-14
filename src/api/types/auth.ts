@@ -17,6 +17,10 @@ export type ApiParent = {
   nom_mere?: string
   telephonemere?: string
   telephone_mere?: string
+  isDirecteur?: boolean
+  is_directeur?: boolean
+  isPromoteur?: boolean
+  is_promoteur?: boolean
 }
 
 export type ParentIdentity = {
@@ -35,6 +39,8 @@ export type LoginRequest = {
 export type LoginResponse = {
   token: string
   parent: ApiParent
+  roles: string[]
+  isPromoteur: boolean
 }
 
 export type ChangePinRequest = {
@@ -52,4 +58,6 @@ export type SessionData = {
   parentName?: string
   parentIdentity?: ParentIdentity
   mustChangePin: boolean
+  isPromoteur: boolean
+  roles: string[]
 }

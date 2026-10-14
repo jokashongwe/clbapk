@@ -311,9 +311,11 @@ export function ProfileScreen() {
           <div className="min-w-0">
             <p className="text-gray-900 text-base truncate" style={{ fontWeight: 700 }}>{parentName}</p>
             <p className="text-gray-500 text-xs mt-0.5">
-              {identity?.nomTuteur && identity.nomTuteur !== parentName
-                ? `Tuteur : ${identity.nomTuteur}`
-                : 'Compte parent'}
+              {session.isPromoteur ? 'Compte parent · Promoteur' : (
+                identity?.nomTuteur && identity.nomTuteur !== parentName
+                  ? `Tuteur : ${identity.nomTuteur}`
+                  : 'Compte parent'
+              )}
             </p>
           </div>
         </div>

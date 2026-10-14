@@ -1,0 +1,214 @@
+{
+  "info": {
+    "_postman_id": "clb-api-statistiques-collection",
+    "name": "CLB API — Statistiques",
+    "description": "APIs de statistiques (inscriptions et paiements).\n\n**Accès réservé aux directeurs** (`ROLE_DIRECTEUR`).\n\n1. Exécuter **Auth > Login directeur** avec le téléphone/PIN d'un parent directeur.\n2. Vérifier que la réponse contient `isDirecteur: true` et `roles` incluant `ROLE_DIRECTEUR`.\n3. Les requêtes suivantes utilisent automatiquement le token de session.\n\nLe token technique `API_TOKEN` ne donne **pas** accès à ces endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "sessionToken", "value": "" },
+    { "key": "authToken", "value": "" },
+    { "key": "anneescolaireId", "value": "4" },
+    { "key": "telephone", "value": "+243997031460" },
+    { "key": "pin", "value": "1234" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{authToken}}", "type": "string" }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.collectionVariables.set('authToken', pm.collectionVariables.get('sessionToken') || '');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Connexion parent directeur (téléphone + PIN).",
+      "item": [
+        {
+          "name": "Login directeur",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telephone\": \"{{telephone}}\",\n  \"pin\": \"{{pin}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Connexion parent. Le compte doit être directeur (`isDirecteur: true`)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('sessionToken', json.token);",
+                  "    pm.test('Token enregistré', () => pm.expect(json.token).to.be.a('string'));",
+                  "    pm.test('Parent directeur', () => {",
+                  "        pm.expect(json.parent.isDirecteur).to.eql(true);",
+                  "        pm.expect(json.roles).to.include('ROLE_DIRECTEUR');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inscriptions — Statistiques",
+      "description": "Comptage Nouveau/Ancien par catégorie (via type_classe).",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/inscriptions/statistiques/annee-scolaire-courante",
+            "description": "Statistiques d'inscriptions pour l'année scolaire en cours."
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/inscriptions/statistiques/annee-scolaire/{{anneescolaireId}}",
+            "description": "Statistiques pour une année scolaire donnée (`annee_scolaire.id`)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Par tarification",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-tarification/annee-scolaire-courante"
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-tarification/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Par catégorie",
+      "description": "Jointure eleve → classe → categorie.",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-categorie/annee-scolaire-courante"
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-categorie/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Par mois",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-mois/annee-scolaire-courante"
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-mois/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Par type de paiement",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-type-paiement/annee-scolaire-courante"
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-type-paiement/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Par caisse",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-caisse/annee-scolaire-courante"
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/par-caisse/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paiements — Résumé global",
+      "item": [
+        {
+          "name": "Année scolaire en cours",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/resume/annee-scolaire-courante",
+            "description": "Totaux globaux : nombre de paiements, élèves, tarifications, montants USD/FC."
+          }
+        },
+        {
+          "name": "Année scolaire par ID",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/paiements/statistiques/resume/annee-scolaire/{{anneescolaireId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

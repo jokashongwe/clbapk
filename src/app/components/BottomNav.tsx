@@ -1,14 +1,15 @@
-import { Home, CreditCard, Calendar, MessageSquare, User, type LucideIcon } from 'lucide-react'
+import { Home, CreditCard, Calendar, MessageSquare, User, BarChart3, type LucideIcon } from 'lucide-react'
 import { FEATURES } from '../config/features'
 
-export type MainTab = 'home' | 'payments' | 'absences' | 'messages' | 'profile'
+export type MainTab = 'statistics' | 'home' | 'payments' | 'absences' | 'messages' | 'profile'
 
 interface Props {
   activeTab: MainTab
   onChange: (tab: MainTab) => void
+  isPromoteur?: boolean
 }
 
-const allTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean }[] = [
+const parentTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean }[] = [
   { id: 'home', label: 'Accueil', Icon: Home, enabled: true },
   { id: 'payments', label: 'Paiements', Icon: CreditCard, enabled: true },
   { id: 'absences', label: 'Absences', Icon: Calendar, enabled: true },
@@ -16,8 +17,17 @@ const allTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean 
   { id: 'messages', label: 'Messages', Icon: MessageSquare, enabled: FEATURES.messages },
 ]
 
-export function BottomNav({ activeTab, onChange }: Props) {
-  const tabs = allTabs.filter(t => t.enabled)
+const promoterTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean }[] = [
+  { id: 'statistics', label: 'Stats', Icon: BarChart3, enabled: true },
+  { id: 'home', label: 'Accueil', Icon: Home, enabled: true },
+  { id: 'payments', label: 'Paiements', Icon: CreditCard, enabled: true },
+  { id: 'absences', label: 'Absences', Icon: Calendar, enabled: true },
+  { id: 'profile', label: 'Profil', Icon: User, enabled: true },
+  { id: 'messages', label: 'Messages', Icon: MessageSquare, enabled: FEATURES.messages },
+]
+
+export function BottomNav({ activeTab, onChange, isPromoteur = false }: Props) {
+  const tabs = (isPromoteur ? promoterTabs : parentTabs).filter(t => t.enabled)
 
   return (
     <div className="flex-shrink-0 bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
@@ -51,4 +61,8 @@ export function BottomNav({ activeTab, onChange }: Props) {
       <div className="h-4" />
     </div>
   )
+}
+
+export function getDefaultTab(isPromoteur: boolean): MainTab {
+  return isPromoteur ? 'statistics' : 'home'
 }

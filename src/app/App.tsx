@@ -1,5 +1,4 @@
-import React from 'react'
-import { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { LoginScreen } from './components/LoginScreen'
@@ -9,7 +8,8 @@ import { ChildDetailScreen } from './components/ChildDetailScreen'
 import { PaymentsScreen } from './components/PaymentsScreen'
 import { AbsencesScreen } from './components/AbsencesScreen'
 import { ProfileScreen } from './components/ProfileScreen'
-import { BottomNav, MainTab } from './components/BottomNav'
+import { StatisticsScreen } from './components/StatisticsScreen'
+import { BottomNav, getDefaultTab, MainTab } from './components/BottomNav'
 
 type Screen = 'main' | 'child-detail'
 
@@ -18,6 +18,12 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('main')
   const [activeTab, setActiveTab] = useState<MainTab>('home')
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (session) {
+      setActiveTab(getDefaultTab(session.isPromoteur))
+    }
+  }, [session?.isPromoteur, session?.parentId])
 
   const handleTabChange = (tab: MainTab) => {
     setActiveTab(tab)
@@ -52,6 +58,8 @@ export default function App() {
       )
     }
     switch (activeTab) {
+      case 'statistics':
+        return session.isPromoteur ? <StatisticsScreen /> : <HomeScreen onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }} />
       case 'home':
         return (
           <HomeScreen
@@ -65,11 +73,13 @@ export default function App() {
       case 'profile':
         return <ProfileScreen />
       default:
-        return (
-          <HomeScreen
-            onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }}
-          />
-        )
+        return session.isPromoteur
+          ? <StatisticsScreen />
+          : (
+            <HomeScreen
+              onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }}
+            />
+          )
     }
   }
 
@@ -77,7 +87,11 @@ export default function App() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {renderMainContent()}
       {screen === 'main' && (
-        <BottomNav activeTab={activeTab} onChange={handleTabChange} />
+        <BottomNav
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          isPromoteur={session.isPromoteur}
+        />
       )}
     </div>
   )
