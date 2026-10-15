@@ -1,4 +1,4 @@
-export type ApiClasse = string | { nom?: string; libelle?: string; name?: string }
+export type ApiClasse = string | { id?: number; nom?: string; libelle?: string; name?: string }
 
 export type ApiSection = string | { nom?: string; libelle?: string; name?: string }
 
@@ -7,6 +7,7 @@ export type ApiEleve = {
   nom?: string
   prenom?: string
   postnom?: string
+  classeId?: number
   classe?: ApiClasse
   section?: ApiSection
   annee_scolaire?: string

@@ -9,7 +9,12 @@ import { PaymentsScreen } from './components/PaymentsScreen'
 import { AbsencesScreen } from './components/AbsencesScreen'
 import { ProfileScreen } from './components/ProfileScreen'
 import { StatisticsScreen } from './components/StatisticsScreen'
+import { AnnoncesScreen } from './components/AnnoncesScreen'
+import { DevoirsScreen } from './components/DevoirsScreen'
 import { BottomNav, getDefaultTab, MainTab } from './components/BottomNav'
+import * as annoncesService from '../api/services/annonces'
+import { setUnreadAnnonces } from './state/unreadAnnonces'
+import { enablePushNotifications, subscribePushOpen } from '../push/pushNotifications'
 
 type Screen = 'main' | 'child-detail'
 
@@ -18,12 +23,32 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('main')
   const [activeTab, setActiveTab] = useState<MainTab>('home')
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | undefined>()
 
   useEffect(() => {
     if (session) {
       setActiveTab(getDefaultTab(session.isPromoteur))
     }
   }, [session?.isPromoteur, session?.parentId])
+
+  useEffect(() => {
+    if (!session || session.mustChangePin) {
+      setUnreadAnnonces(0)
+      return
+    }
+    annoncesService.getUnreadAnnonces().then(list => setUnreadAnnonces(list.length)).catch(() => {})
+    enablePushNotifications()
+    return subscribePushOpen(payload => {
+      if (payload.type === 'devoir') {
+        setActiveTab('devoirs')
+        setFocusId(payload.devoirId)
+      } else {
+        setActiveTab('annonces')
+        setFocusId(payload.annonceId)
+      }
+      setScreen('main')
+    })
+  }, [session])
 
   const handleTabChange = (tab: MainTab) => {
     setActiveTab(tab)
@@ -70,6 +95,10 @@ export default function App() {
         return <PaymentsScreen />
       case 'absences':
         return <AbsencesScreen />
+      case 'annonces':
+        return <AnnoncesScreen focusId={focusId} />
+      case 'devoirs':
+        return <DevoirsScreen focusId={focusId} />
       case 'profile':
         return <ProfileScreen />
       default:

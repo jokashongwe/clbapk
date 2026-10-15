@@ -9,6 +9,14 @@ function resolveLabel(value?: ApiClasse | ApiSection): string | undefined {
   return value.libelle ?? value.nom ?? value.name
 }
 
+function resolveClasseId(eleve: ApiEleve): number | undefined {
+  if (typeof eleve.classeId === 'number') return eleve.classeId
+  if (typeof eleve.classe === 'object' && eleve.classe && typeof eleve.classe.id === 'number') {
+    return eleve.classe.id
+  }
+  return undefined
+}
+
 function initials(prenom?: string, nom?: string): string {
   const p = prenom?.trim().charAt(0).toUpperCase() ?? ''
   const n = nom?.trim().charAt(0).toUpperCase() ?? ''
@@ -31,6 +39,7 @@ export function mapEleveToChild(
     id: String(eleve.id),
     name,
     class: resolveLabel(eleve.classe) ?? '—',
+    classeId: resolveClasseId(eleve),
     section: resolveLabel(eleve.section),
     schoolYear: schoolYear ?? eleve.annee_scolaire ?? eleve.anneescolaire,
     avatar: initials(prenom, nom),

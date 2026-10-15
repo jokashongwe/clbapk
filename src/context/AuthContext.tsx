@@ -13,6 +13,7 @@ import { extractParentIdentity, parentDisplayName } from '../api/mappers/auth'
 import * as authService from '../api/services/auth'
 import { setActiveSession } from '../api/session'
 import { clearSession, loadSession, saveSession } from '../api/storage'
+import { disablePushNotifications } from '../push/pushNotifications'
 import type { ApiParent, SessionData } from '../api/types/auth'
 
 type AuthContextValue = {
@@ -124,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session])
 
   const logout = useCallback(async () => {
+    await disablePushNotifications()
     await clearSession()
     setActiveSession(null)
     setLoginPin(null)

@@ -1,7 +1,8 @@
-import { Home, CreditCard, Calendar, MessageSquare, User, BarChart3, type LucideIcon } from 'lucide-react'
+import { Home, CreditCard, Calendar, MessageSquare, User, BarChart3, Megaphone, BookOpen, type LucideIcon } from 'lucide-react'
 import { FEATURES } from '../config/features'
+import { useUnreadAnnonces } from '../state/unreadAnnonces'
 
-export type MainTab = 'statistics' | 'home' | 'payments' | 'absences' | 'messages' | 'profile'
+export type MainTab = 'statistics' | 'home' | 'payments' | 'absences' | 'annonces' | 'devoirs' | 'messages' | 'profile'
 
 interface Props {
   activeTab: MainTab
@@ -11,8 +12,10 @@ interface Props {
 
 const parentTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean }[] = [
   { id: 'home', label: 'Accueil', Icon: Home, enabled: true },
-  { id: 'payments', label: 'Paiements', Icon: CreditCard, enabled: true },
+  { id: 'payments', label: 'Frais', Icon: CreditCard, enabled: true },
   { id: 'absences', label: 'Absences', Icon: Calendar, enabled: true },
+  { id: 'annonces', label: 'Annonces', Icon: Megaphone, enabled: true },
+  { id: 'devoirs', label: 'Devoirs', Icon: BookOpen, enabled: true },
   { id: 'profile', label: 'Profil', Icon: User, enabled: true },
   { id: 'messages', label: 'Messages', Icon: MessageSquare, enabled: FEATURES.messages },
 ]
@@ -20,13 +23,15 @@ const parentTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boole
 const promoterTabs: { id: MainTab; label: string; Icon: LucideIcon; enabled: boolean }[] = [
   { id: 'statistics', label: 'Stats', Icon: BarChart3, enabled: true },
   { id: 'home', label: 'Accueil', Icon: Home, enabled: true },
-  { id: 'payments', label: 'Paiements', Icon: CreditCard, enabled: true },
-  { id: 'absences', label: 'Absences', Icon: Calendar, enabled: true },
+  { id: 'payments', label: 'Frais', Icon: CreditCard, enabled: true },
+  { id: 'annonces', label: 'Annonces', Icon: Megaphone, enabled: true },
+  { id: 'devoirs', label: 'Devoirs', Icon: BookOpen, enabled: true },
   { id: 'profile', label: 'Profil', Icon: User, enabled: true },
   { id: 'messages', label: 'Messages', Icon: MessageSquare, enabled: FEATURES.messages },
 ]
 
 export function BottomNav({ activeTab, onChange, isPromoteur = false }: Props) {
+  const unreadAnnonces = useUnreadAnnonces()
   const tabs = (isPromoteur ? promoterTabs : parentTabs).filter(t => t.enabled)
 
   return (
@@ -40,11 +45,18 @@ export function BottomNav({ activeTab, onChange, isPromoteur = false }: Props) {
               onClick={() => onChange(id)}
               className="flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors"
             >
-              <Icon
-                size={22}
-                strokeWidth={active ? 2.5 : 1.8}
-                className={active ? 'text-clb-blue' : 'text-gray-400'}
-              />
+              <span className="relative">
+                <Icon
+                  size={20}
+                  strokeWidth={active ? 2.5 : 1.8}
+                  className={active ? 'text-clb-blue' : 'text-gray-400'}
+                />
+                {id === 'annonces' && unreadAnnonces > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 bg-clb-red rounded-full text-white text-[9px] flex items-center justify-center" style={{ fontWeight: 700 }}>
+                    {unreadAnnonces > 9 ? '9+' : unreadAnnonces}
+                  </span>
+                )}
+              </span>
               <span
                 className={`text-[10px] tracking-tight ${active ? 'text-clb-blue' : 'text-gray-400'}`}
                 style={{ fontWeight: active ? 600 : 400 }}

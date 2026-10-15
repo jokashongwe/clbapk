@@ -6,6 +6,7 @@ import { clearSession, getStoredBaseUrl, getStoredToken } from './storage'
 type RequestOptions = {
   method?: string
   body?: unknown
+  formData?: FormData
   params?: Record<string, string | number | boolean | undefined>
   baseUrl?: string
   token?: string | null
@@ -28,6 +29,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const {
     method = 'GET',
     body,
+    formData,
     params,
     auth = true,
   } = options
@@ -42,7 +44,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     'X-API-KEY': CLB_API_KEY,
   }
 
-  if (body !== undefined) {
+  if (body !== undefined && formData === undefined) {
     headers['Content-Type'] = 'application/json'
   }
 
@@ -59,7 +61,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     response = await fetch(buildUrl(baseUrl, path, params), {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: formData ?? (body !== undefined ? JSON.stringify(body) : undefined),
     })
   } catch {
     throw new ApiError('Connexion impossible. Vérifiez votre réseau.', 0)
