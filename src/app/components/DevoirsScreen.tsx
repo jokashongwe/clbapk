@@ -3,7 +3,9 @@ import { format, isValid, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Download, FileText, Loader2, RefreshCw, Upload } from 'lucide-react'
 import { getErrorMessage } from '../../api/errors'
+import * as classesService from '../../api/services/classes'
 import * as devoirsService from '../../api/services/devoirs'
+import type { Classe } from '../../api/types/classe'
 import type { Devoir } from '../../api/types/devoir'
 import { useAuth } from '../../context/AuthContext'
 import { useChildren } from '../../context/ChildrenContext'
@@ -24,6 +26,8 @@ export function DevoirsScreen({ focusId }: Props) {
   const { session } = useAuth()
   const { children } = useChildren()
   const [devoirs, setDevoirs] = useState<Devoir[]>([])
+  const [apiClasses, setApiClasses] = useState<Classe[]>([])
+  const [classesLoading, setClassesLoading] = useState(Boolean(session?.isPromoteur))
   const [classeFilter, setClasseFilter] = useState<number | 'all'>('all')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,13 +36,48 @@ export function DevoirsScreen({ focusId }: Props) {
   const [publishing, setPublishing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const classes = useMemo(() => {
+  const parentClasses = useMemo(() => {
     const map = new Map<number, string>()
     for (const child of children) {
       if (child.classeId) map.set(child.classeId, child.class)
     }
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }))
   }, [children])
+
+  const classes = useMemo(() => {
+    if (session?.isPromoteur) {
+      return apiClasses.map(item => ({ id: item.id, label: item.nomAffiche }))
+    }
+    return parentClasses
+  }, [session?.isPromoteur, apiClasses, parentClasses])
+
+  useEffect(() => {
+    if (!session?.isPromoteur) {
+      setApiClasses([])
+      setClassesLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setClassesLoading(true)
+    classesService.getClasses()
+      .then(list => {
+        if (cancelled) return
+        setApiClasses(list)
+        setClasseFilter(current => {
+          if (current !== 'all') return current
+          return list[0]?.id ?? 'all'
+        })
+      })
+      .catch(err => {
+        if (!cancelled) setActionError(getErrorMessage(err))
+      })
+      .finally(() => {
+        if (!cancelled) setClassesLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [session?.isPromoteur])
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -64,8 +103,9 @@ export function DevoirsScreen({ focusId }: Props) {
   }, [classeFilter, classes, session?.isPromoteur])
 
   useEffect(() => {
+    if (session?.isPromoteur && classesLoading) return
     load()
-  }, [load])
+  }, [load, session?.isPromoteur, classesLoading])
 
   const download = async (devoir: Devoir) => {
     setActionError(null)
@@ -79,6 +119,8 @@ export function DevoirsScreen({ focusId }: Props) {
       setDownloadingId(null)
     }
   }
+
+  const selectedClasseLabel = classes.find(item => item.id === classeFilter)?.label
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -104,17 +146,23 @@ export function DevoirsScreen({ focusId }: Props) {
         {!session?.isPromoteur && (
           <FilterChip active={classeFilter === 'all'} label="Toutes" onClick={() => setClasseFilter('all')} />
         )}
-        {classes.map(item => (
-          <FilterChip
-            key={item.id}
-            active={classeFilter === item.id || (session?.isPromoteur && classeFilter === 'all' && classes[0]?.id === item.id)}
-            label={item.label}
-            onClick={() => setClasseFilter(item.id)}
-          />
-        ))}
+        {classesLoading ? (
+          <span className="text-gray-400 text-xs flex items-center gap-1 px-2">
+            <Loader2 size={12} className="animate-spin" /> Classes…
+          </span>
+        ) : (
+          classes.map(item => (
+            <FilterChip
+              key={item.id}
+              active={classeFilter === item.id || (session?.isPromoteur && classeFilter === 'all' && classes[0]?.id === item.id)}
+              label={item.label}
+              onClick={() => setClasseFilter(item.id)}
+            />
+          ))
+        )}
       </div>
 
-      {isLoading ? (
+      {isLoading || (session?.isPromoteur && classesLoading) ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 size={32} className="text-clb-blue animate-spin" />
           <p className="text-gray-500 text-sm">Chargement des devoirs…</p>
@@ -133,6 +181,7 @@ export function DevoirsScreen({ focusId }: Props) {
             {publishing && session?.isPromoteur && (
               <PublishDevoir
                 classes={classes}
+                initialClasseId={typeof classeFilter === 'number' ? classeFilter : classes[0]?.id}
                 saving={isSaving}
                 onCancel={() => setPublishing(false)}
                 onSubmit={async input => {
@@ -155,7 +204,11 @@ export function DevoirsScreen({ focusId }: Props) {
               <div className="bg-white rounded-2xl p-8 text-center border border-gray-100 shadow-sm">
                 <FileText size={28} className="text-clb-blue mx-auto mb-2" />
                 <p className="text-gray-700 text-sm" style={{ fontWeight: 600 }}>Aucun devoir</p>
-                <p className="text-gray-400 text-xs mt-1">Les fichiers publiés pour vos classes apparaîtront ici.</p>
+                <p className="text-gray-400 text-xs mt-1">
+                  {selectedClasseLabel
+                    ? `Aucun fichier pour ${selectedClasseLabel}.`
+                    : 'Les fichiers publiés pour vos classes apparaîtront ici.'}
+                </p>
               </div>
             ) : devoirs.map(devoir => (
               <article
@@ -167,7 +220,11 @@ export function DevoirsScreen({ focusId }: Props) {
                 <div className="mt-2 text-[10px] text-gray-400 flex flex-wrap gap-x-2">
                   {devoir.filename && <span>{devoir.filename}</span>}
                   {devoir.createdAt && <span>{formatDate(devoir.createdAt)}</span>}
-                  {devoir.classeId && <span>Classe #{devoir.classeId}</span>}
+                  {devoir.classeId && (
+                    <span>
+                      {classes.find(item => item.id === devoir.classeId)?.label ?? `Classe #${devoir.classeId}`}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => download(devoir)}
@@ -201,26 +258,67 @@ function FilterChip({ active, label, onClick }: { active: boolean; label: string
 
 function PublishDevoir({
   classes,
+  initialClasseId,
   saving,
   onCancel,
   onSubmit,
 }: {
   classes: { id: number; label: string }[]
+  initialClasseId?: number
   saving: boolean
   onCancel: () => void
   onSubmit: (input: { file: File; titre: string; classeId: number; description?: string }) => Promise<void>
 }) {
   const [titre, setTitre] = useState('')
   const [description, setDescription] = useState('')
-  const [classeId, setClasseId] = useState(classes[0] ? String(classes[0].id) : '')
+  const [classeId, setClasseId] = useState(initialClasseId ? String(initialClasseId) : classes[0] ? String(classes[0].id) : '')
   const [file, setFile] = useState<File | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verifiedLabel, setVerifiedLabel] = useState<string | null>(
+    classes.find(item => String(item.id) === classeId)?.label ?? null,
+  )
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const id = Number(classeId)
+    if (!Number.isFinite(id) || id <= 0) {
+      setVerifiedLabel(null)
+      return
+    }
+
+    const local = classes.find(item => item.id === id)
+    if (local) {
+      setVerifiedLabel(local.label)
+      setVerifyError(null)
+      return
+    }
+
+    let cancelled = false
+    setVerifying(true)
+    setVerifyError(null)
+    classesService.getClasse(id)
+      .then(classe => {
+        if (!cancelled) setVerifiedLabel(classe.nomAffiche)
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setVerifiedLabel(null)
+          setVerifyError(getErrorMessage(err))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setVerifying(false)
+      })
+
+    return () => { cancelled = true }
+  }, [classeId, classes])
 
   return (
     <form
       className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3"
       onSubmit={event => {
         event.preventDefault()
-        if (!file) return
+        if (!file || !classeId) return
         onSubmit({
           file,
           titre: titre.trim(),
@@ -234,11 +332,21 @@ function PublishDevoir({
       <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Description (optionnel)" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
       {classes.length > 0 ? (
         <select required value={classeId} onChange={e => setClasseId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm">
+          <option value="">Choisir une classe</option>
           {classes.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
         </select>
       ) : (
         <input required value={classeId} onChange={e => setClasseId(e.target.value)} inputMode="numeric" placeholder="ID de la classe" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
       )}
+      {verifying && (
+        <p className="text-gray-400 text-[10px] flex items-center gap-1">
+          <Loader2 size={12} className="animate-spin" /> Vérification de la classe…
+        </p>
+      )}
+      {verifiedLabel && !verifying && (
+        <p className="text-gray-500 text-[10px]">Classe : {verifiedLabel}</p>
+      )}
+      {verifyError && <p className="text-clb-red text-xs">{verifyError}</p>}
       <input
         required
         type="file"
@@ -248,7 +356,12 @@ function PublishDevoir({
       />
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600">Annuler</button>
-        <button type="submit" disabled={saving} className="flex-1 bg-clb-blue text-white rounded-xl py-2 text-sm disabled:opacity-50" style={{ fontWeight: 600 }}>
+        <button
+          type="submit"
+          disabled={saving || verifying || !classeId || Boolean(verifyError)}
+          className="flex-1 bg-clb-blue text-white rounded-xl py-2 text-sm disabled:opacity-50"
+          style={{ fontWeight: 600 }}
+        >
           {saving ? 'Envoi…' : 'Publier'}
         </button>
       </div>

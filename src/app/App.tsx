@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { isDirectorOrPromoterRole } from '../api/mappers/auth'
 import { useAuth } from '../context/AuthContext'
 import { LoginScreen } from './components/LoginScreen'
 import { ChangePinScreen } from './components/ChangePinScreen'
@@ -25,11 +26,15 @@ export default function App() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null)
   const [focusId, setFocusId] = useState<string | undefined>()
 
+  const isDirecteur = Boolean(
+    session?.isPromoteur || session?.roles?.some(isDirectorOrPromoterRole),
+  )
+
   useEffect(() => {
     if (session) {
-      setActiveTab(getDefaultTab(session.isPromoteur))
+      setActiveTab(getDefaultTab(isDirecteur))
     }
-  }, [session?.isPromoteur, session?.parentId])
+  }, [isDirecteur, session?.parentId])
 
   useEffect(() => {
     if (!session || session.mustChangePin) {
@@ -73,6 +78,11 @@ export default function App() {
     )
   }
 
+  const openChild = (id: string) => {
+    setSelectedChildId(id)
+    setScreen('child-detail')
+  }
+
   const renderMainContent = () => {
     if (screen === 'child-detail' && selectedChildId) {
       return (
@@ -84,13 +94,9 @@ export default function App() {
     }
     switch (activeTab) {
       case 'statistics':
-        return session.isPromoteur ? <StatisticsScreen /> : <HomeScreen onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }} />
+        return isDirecteur ? <StatisticsScreen /> : <HomeScreen onSelectChild={openChild} />
       case 'home':
-        return (
-          <HomeScreen
-            onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }}
-          />
-        )
+        return <HomeScreen onSelectChild={openChild} />
       case 'payments':
         return <PaymentsScreen />
       case 'absences':
@@ -102,13 +108,9 @@ export default function App() {
       case 'profile':
         return <ProfileScreen />
       default:
-        return session.isPromoteur
+        return isDirecteur
           ? <StatisticsScreen />
-          : (
-            <HomeScreen
-              onSelectChild={id => { setSelectedChildId(id); setScreen('child-detail') }}
-            />
-          )
+          : <HomeScreen onSelectChild={openChild} />
     }
   }
 
@@ -119,7 +121,7 @@ export default function App() {
         <BottomNav
           activeTab={activeTab}
           onChange={handleTabChange}
-          isPromoteur={session.isPromoteur}
+          isPromoteur={isDirecteur}
         />
       )}
     </div>

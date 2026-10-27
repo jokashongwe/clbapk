@@ -4,7 +4,11 @@ import { fr } from 'date-fns/locale'
 import { Bell, CheckCheck, Loader2, Megaphone, Plus, RefreshCw } from 'lucide-react'
 import { getErrorMessage } from '../../api/errors'
 import * as annoncesService from '../../api/services/annonces'
+import * as classesService from '../../api/services/classes'
+import * as optionsService from '../../api/services/options'
 import type { Annonce, AnnonceType, CibleType } from '../../api/types/annonce'
+import type { Classe } from '../../api/types/classe'
+import type { SchoolOption } from '../../api/types/option'
 import { useAuth } from '../../context/AuthContext'
 import { useChildren } from '../../context/ChildrenContext'
 import { setUnreadAnnonces } from '../state/unreadAnnonces'
@@ -142,9 +146,6 @@ export function AnnoncesScreen({ focusId }: Props) {
           {composing && session?.isPromoteur && (
             <ComposeAnnonce
               childrenOptions={children.map(child => ({ id: Number(child.id), label: child.name }))}
-              classOptions={children
-                .filter(child => child.classeId)
-                .map(child => ({ id: child.classeId as number, label: child.class }))}
               saving={isSaving}
               onCancel={() => setComposing(false)}
               onSubmit={async payload => {
@@ -222,13 +223,11 @@ export function AnnoncesScreen({ focusId }: Props) {
 
 function ComposeAnnonce({
   childrenOptions,
-  classOptions,
   saving,
   onCancel,
   onSubmit,
 }: {
   childrenOptions: { id: number; label: string }[]
-  classOptions: { id: number; label: string }[]
   saving: boolean
   onCancel: () => void
   onSubmit: (payload: {
@@ -244,8 +243,93 @@ function ComposeAnnonce({
   const [contenu, setContenu] = useState('')
   const [cibleType, setCibleType] = useState<CibleType>('tous')
   const [cibleId, setCibleId] = useState('')
+  const [optionFilterId, setOptionFilterId] = useState('')
+  const [classes, setClasses] = useState<Classe[]>([])
+  const [options, setOptions] = useState<SchoolOption[]>([])
+  const [listsLoading, setListsLoading] = useState(false)
+  const [listsError, setListsError] = useState<string | null>(null)
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null)
 
-  const uniqueClasses = Array.from(new Map(classOptions.map(item => [item.id, item])).values())
+  useEffect(() => {
+    if (cibleType !== 'classe' && cibleType !== 'option') {
+      setClasses([])
+      setListsError(null)
+      setSelectedLabel(null)
+      return
+    }
+
+    let cancelled = false
+    setListsLoading(true)
+    setListsError(null)
+
+    const loadLists = async () => {
+      try {
+        if (cibleType === 'option') {
+          const list = await optionsService.getOptions()
+          if (!cancelled) {
+            setOptions(list)
+            setClasses([])
+          }
+          return
+        }
+
+        const categorieId = optionFilterId ? Number(optionFilterId) : undefined
+        const [classList, optionList] = await Promise.all([
+          classesService.getClasses(Number.isFinite(categorieId) ? categorieId : undefined),
+          optionsService.getOptions(),
+        ])
+        if (!cancelled) {
+          setClasses(classList)
+          setOptions(optionList)
+        }
+      } catch (err) {
+        if (!cancelled) setListsError(getErrorMessage(err))
+      } finally {
+        if (!cancelled) setListsLoading(false)
+      }
+    }
+
+    loadLists()
+    return () => { cancelled = true }
+  }, [cibleType, optionFilterId])
+
+  useEffect(() => {
+    if (!cibleId || (cibleType !== 'classe' && cibleType !== 'option')) {
+      setSelectedLabel(null)
+      return
+    }
+
+    const id = Number(cibleId)
+    if (!Number.isFinite(id)) return
+
+    let cancelled = false
+    const resolve = async () => {
+      try {
+        if (cibleType === 'classe') {
+          const local = classes.find(item => item.id === id)
+          if (local) {
+            if (!cancelled) setSelectedLabel(local.nomAffiche)
+            return
+          }
+          const classe = await classesService.getClasse(id)
+          if (!cancelled) setSelectedLabel(classe.nomAffiche)
+        } else {
+          const local = options.find(item => item.id === id)
+          if (local) {
+            if (!cancelled) setSelectedLabel(local.nomAffiche)
+            return
+          }
+          const option = await optionsService.getOption(id)
+          if (!cancelled) setSelectedLabel(option.nomAffiche)
+        }
+      } catch {
+        if (!cancelled) setSelectedLabel(null)
+      }
+    }
+
+    resolve()
+    return () => { cancelled = true }
+  }, [cibleId, cibleType, classes, options])
 
   return (
     <form
@@ -283,34 +367,104 @@ function ComposeAnnonce({
         placeholder="Message"
         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
       />
-      <select value={cibleType} onChange={e => { setCibleType(e.target.value as CibleType); setCibleId('') }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm">
+      <select
+        value={cibleType}
+        onChange={e => {
+          setCibleType(e.target.value as CibleType)
+          setCibleId('')
+          setOptionFilterId('')
+          setSelectedLabel(null)
+        }}
+        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+      >
         <option value="tous">Tous les parents</option>
         <option value="eleve">Un élève</option>
         <option value="classe">Une classe</option>
         <option value="option">Une option (catégorie)</option>
       </select>
+
       {cibleType === 'eleve' && (
         <select required value={cibleId} onChange={e => setCibleId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm">
           <option value="">Choisir un élève</option>
           {childrenOptions.map(child => <option key={child.id} value={child.id}>{child.label}</option>)}
         </select>
       )}
+
       {cibleType === 'classe' && (
-        uniqueClasses.length > 0 ? (
-          <select required value={cibleId} onChange={e => setCibleId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm">
-            <option value="">Choisir une classe</option>
-            {uniqueClasses.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+        <div className="space-y-2">
+          <select
+            value={optionFilterId}
+            onChange={e => {
+              setOptionFilterId(e.target.value)
+              setCibleId('')
+            }}
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+          >
+            <option value="">Toutes les options</option>
+            {options.map(item => (
+              <option key={item.id} value={item.id}>{item.nomAffiche}</option>
+            ))}
           </select>
-        ) : (
-          <input required value={cibleId} onChange={e => setCibleId(e.target.value)} inputMode="numeric" placeholder="ID de la classe" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
-        )
+          {listsLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 text-xs py-1">
+              <Loader2 size={14} className="animate-spin" /> Chargement des classes…
+            </div>
+          ) : listsError ? (
+            <p className="text-clb-red text-xs">{listsError}</p>
+          ) : (
+            <select
+              required
+              value={cibleId}
+              onChange={e => setCibleId(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">Choisir une classe</option>
+              {classes.map(item => (
+                <option key={item.id} value={item.id}>{item.nomAffiche}</option>
+              ))}
+            </select>
+          )}
+          {selectedLabel && (
+            <p className="text-gray-500 text-[10px]">Classe sélectionnée : {selectedLabel}</p>
+          )}
+        </div>
       )}
+
       {cibleType === 'option' && (
-        <input required value={cibleId} onChange={e => setCibleId(e.target.value)} inputMode="numeric" placeholder="ID de la catégorie" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm" />
+        <div className="space-y-2">
+          {listsLoading ? (
+            <div className="flex items-center gap-2 text-gray-500 text-xs py-1">
+              <Loader2 size={14} className="animate-spin" /> Chargement des options…
+            </div>
+          ) : listsError ? (
+            <p className="text-clb-red text-xs">{listsError}</p>
+          ) : (
+            <select
+              required
+              value={cibleId}
+              onChange={e => setCibleId(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">Choisir une option</option>
+              {options.map(item => (
+                <option key={item.id} value={item.id}>{item.nomAffiche}</option>
+              ))}
+            </select>
+          )}
+          {selectedLabel && (
+            <p className="text-gray-500 text-[10px]">Option sélectionnée : {selectedLabel}</p>
+          )}
+        </div>
       )}
+
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="flex-1 border border-gray-200 rounded-xl py-2 text-sm text-gray-600">Annuler</button>
-        <button type="submit" disabled={saving} className="flex-1 bg-clb-blue text-white rounded-xl py-2 text-sm disabled:opacity-50" style={{ fontWeight: 600 }}>
+        <button
+          type="submit"
+          disabled={saving || listsLoading || ((cibleType === 'classe' || cibleType === 'option') && !cibleId)}
+          className="flex-1 bg-clb-blue text-white rounded-xl py-2 text-sm disabled:opacity-50"
+          style={{ fontWeight: 600 }}
+        >
           {saving ? 'Envoi…' : 'Publier'}
         </button>
       </div>

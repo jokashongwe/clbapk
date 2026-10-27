@@ -32,16 +32,60 @@ export function parentDisplayName(parent: ApiParent): string | undefined {
   return identity.nomTuteur ?? identity.nomMere ?? identity.nomPere
 }
 
+export function isDirectorOrPromoterRole(role: string): boolean {
+  const normalized = role.trim().toUpperCase().replace(/^ROLE_/, '')
+  return normalized === 'DIRECTEUR' || normalized === 'PROMOTEUR'
+}
+
 export function isPromoterAccount(parent: ApiParent, roles: string[] = []): boolean {
   if (parent.isDirecteur === true || parent.is_directeur === true) return true
   if (parent.isPromoteur === true || parent.is_promoteur === true) return true
-  return roles.some(r => r === 'ROLE_DIRECTEUR' || r === 'ROLE_PROMOTEUR')
+  return roles.some(isDirectorOrPromoterRole)
+}
+
+function normalizeRole(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) {
+    return value.trim()
+  }
+  const record = asRecord(value)
+  if (!record) return null
+  for (const key of ['authority', 'role', 'nom', 'name']) {
+    const candidate = record[key]
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim()
+    }
+  }
+  return null
+}
+
+function collectRoles(value: unknown, into: string[]): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const role = normalizeRole(item)
+      if (role) into.push(role)
+    }
+    return
+  }
+  const role = normalizeRole(value)
+  if (role) into.push(role)
 }
 
 function extractRoles(data: Record<string, unknown>): string[] {
-  const roles = data.roles
-  if (!Array.isArray(roles)) return []
-  return roles.filter((r): r is string => typeof r === 'string')
+  const roles: string[] = []
+  const parent = asRecord(data.parent) ?? asRecord(asRecord(data.data)?.parent) ?? asRecord(data.user)
+  const nestedData = asRecord(data.data)
+
+  collectRoles(data.roles, roles)
+  collectRoles(data.authorities, roles)
+  collectRoles(data.role, roles)
+  collectRoles(nestedData?.roles, roles)
+  collectRoles(nestedData?.authorities, roles)
+  collectRoles(nestedData?.role, roles)
+  collectRoles(parent?.roles, roles)
+  collectRoles(parent?.authorities, roles)
+  collectRoles(parent?.role, roles)
+
+  return [...new Set(roles)]
 }
 
 function extractToken(data: Record<string, unknown>): string | null {

@@ -1,4 +1,5 @@
 import { Preferences } from '@capacitor/preferences'
+import { isDirectorOrPromoterRole } from './mappers/auth'
 import { setActiveSession } from './session'
 import type { SessionData, ParentIdentity } from './types/auth'
 
@@ -75,7 +76,7 @@ export async function loadSession(): Promise<SessionData | null> {
     parentName: parentName ?? undefined,
     parentIdentity,
     mustChangePin: mustChangePin === 'true',
-    isPromoteur: isPromoteurRaw === 'true',
+    isPromoteur: isPromoteurRaw === 'true' || roles.some(isDirectorOrPromoterRole),
     roles,
   }
 }
